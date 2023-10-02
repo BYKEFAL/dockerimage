@@ -1,14 +1,16 @@
 server {
-    # указываем 80 порт для соединения
     listen 80;
-    # нужно указать, какому доменному имени принадлежит наш конфиг
-    server_name mysite.local;
-    # задаём корневую директорию
-    root /app/project;
-    # при обращении к статическим файлам логи не нужны, равно как и обращение к fpm
-    location ~* .(jpg|jpeg|gif|css|png|js|ico|html)$ {
-        access_log off;
-        expires max;
+    server_name 127.0.0.1;
+    
+    location / {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header X-Forwarder-Host $server_name;
+        proxy_set_header X-Real-IP $remote_addr;
     }
-
+    
+    location /static/ {
+        autoindex on;
+        alias /app/project/staticfiles/;
+    }
 }

@@ -7,35 +7,44 @@ ENV PYTHONUNBUFFERED 1
 
 COPY . .
 
-RUN apt-get update && apt-get install -y libpq-dev postgresql postgresql-contrib postgresql-client nginx \
+RUN apt-get update && apt-get install -y libpq-dev postgresql \
+   postgresql-contrib postgresql-client nginx gunicorn \
    && rm -rf /var/lib/apt/lists/*
 
 RUN chmod -R 777 ./ && chmod -R 777 ./* 
 
 RUN rm /etc/nginx/sites-enabled/default
-
-COPY ./conf/projectconf /etc/nginx/sites-enabled/projectconf
+RUN rm /etc/nginx/sites-available/default
+COPY ./conf/projectconf /etc/nginx/sites-available/projectconf
+RUN ln -s /etc/nginx/sites-available/projectconf /etc/nginx/sites-enabled/
 
 RUN pip install -r requirements.txt
 
-USER postgres 
+COPY ./conf/gunicorn.socket /etc/systemd/system/
+COPY ./conf/gunicorn.service /etc/systemd/system/
 
+USER postgres 
 RUN /etc/init.d/postgresql start &&\
    psql --command "CREATE USER admin WITH PASSWORD 'admin';" &&\
    createdb -O admin admin
 
-# CMD cd project && python3 manage.py createsuperuser --no-input && python3 manage.py makemigrations \
-#    && python3 manage.py migrate && gunicorn project.wsgi:aplication --bind 127.0.0.1:8000
+EXPOSE 80
 
-EXPOSE 8000
+USER root
 
-CMD /bin/bash && /etc/init.d/postgresql start && cd project \
-   && python3 manage.py makemigrations \
+CMD /bin/bash && /etc/init.d/postgresql start \ 
+   && service nginx start \
+   && nginx -s reload \
+   && cd project \
+   && python3 manage.py collectstatic --noinput \
+   # && python3 manage.py makemigrations \
    && python3 manage.py migrate \
    && echo "from django.contrib.auth.models import User; \
    User.objects.create_superuser('admin','admin@mail.ru', 'admin')" |  python manage.py shell \
    && echo \
    && echo "admin_login:admin, admin_password:admin" \
    && echo \
-   && python3 manage.py runserver
+   # && service nginx restart \
+   && gunicorn project.wsgi:application --bind 127.0.0.1:8000
+# && python3 manage.py runserver
 
