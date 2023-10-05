@@ -40,7 +40,7 @@ CMD /bin/bash && /etc/init.d/postgresql start \
    # && python3 manage.py makemigrations \
    && python3 manage.py migrate \
    && echo "from django.contrib.auth.models import User; \
-   User.objects.create_superuser('admin','admin@mail.ru', 'admin')" |  python manage.py shell \
+   User.objects.create_superuser('admin','admin@mail.ru', 'admin')" |  python3 manage.py shell \
    && echo \
    && echo "admin_login:admin, admin_password:admin" \
    && echo \
